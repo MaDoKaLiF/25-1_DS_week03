@@ -45,6 +45,33 @@ for epoch in range(EPOCHS):
     epoch_start = time.time()
 
     #TODO 
+    for batch in dataloader:
+        optimizer.zero_grad()
+        input_ids, attention_mask = batch 
+        input_ids = input_ids.to(device)
+        attention_mask = attention_mask.to(device)
+    
+        token_type_ids = torch.zeros_like(input_ids).to(device)
+    
+        input_ids = torch.cat([input_ids, input_ids], dim=0)
+        attention_mask = torch.cat([attention_mask, attention_mask], dim=0)
+        token_type_ids = torch.cat([token_type_ids, token_type_ids], dim=0)
+    
+        embeddings = model(input_ids, attention_mask, token_type_ids)  # [2N, hidden_size]
+    
+        embeddings = F.normalize(embeddings, dim=1)
+        
+        similarity_matrix = embeddings @ embeddings.T  # [2N, 2N]
+        labels = torch.arange(BATCH_SIZE).to(device)
+        labels = torch.cat([labels + BATCH_SIZE, labels], dim=0)
+        similarity_matrix = similarity_matrix / TEMPERATURE
+    
+        loss = F.cross_entropy(similarity_matrix, labels)
+    
+        loss.backward()
+        optimizer.step()
+    
+        total_loss += loss.item()
 
     avg_loss = total_loss / len(dataloader)
     epoch_time = time.time() - epoch_start
